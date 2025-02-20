@@ -1,0 +1,25 @@
+# Import python packages
+import pandas as pd
+import snowflake.snowpark as snowpark
+
+# We can also use Snowpark for our analyses!
+from snowflake.snowpark.context import get_active_session
+session = get_active_session()
+print(session)
+
+
+LS @TEST_AZURE_STAGE;
+
+#df = session.read.options({"infer_schema":True}).csv('@TEST_AZURE_STAGE/Genrator_Statistics_FY2024_Updated_1_csv.csv')
+snowpark = session.read.options({"infer_schema":True}).csv('@TEST_AZURE_STAGE/Genrator_Statistics_FY2024_Updated_1_csv.csv')
+
+
+#from snowflake.snowpark.functions import col
+# Get the first 10 columns from the DataFrame
+#columns = snowpark.columns[:10] 
+# Select the first 10 columns and filter the first 100 rows
+#df = snowpark.select(*columns).limit(100)
+#df.show()
+snowpark.show()
+
+
