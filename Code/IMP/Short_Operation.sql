@@ -105,56 +105,10 @@ ORDER BY [Location], [Date_U], [Hours];
 
 -- select * from #FinalResult
 
---------------------------------------------------------------------------------------------------
--- Creating Table for Short Operation
---------------------------------------------------------------------------------------------------
-
-CREATE TABLE Test_DB.dbo.Short_Operation_Result (
-    Date_U FLOAT,                         -- Column Date_U as FLOAT (same as #FinalResult)
-    Hours FLOAT,                          -- Column Hours as FLOAT
-    Location NVARCHAR(510),               -- Column Location as NVARCHAR
-    Value FLOAT,                          -- Column Value as FLOAT
-    Binary_Value INT,                     -- Column Binary_Value as INT
-    Binary_Count BIGINT,                  -- Column Binary_Count as BIGINT
-    Total_Numbers_In_Binary_Count_Group BIGINT,  -- Column Total_Numbers_In_Binary_Count_Group as BIGINT
-    Total_Hours DECIMAL(10, 2)            -- Column Total_Hours as DECIMAL with 2 decimal places
-);
-
-
-
-
---------------------------------------------------------------------------------------------------
--- Insert data inside Short Operation Table
---------------------------------------------------------------------------------------------------
-
-INSERT INTO Test_DB.dbo.Short_Operation_Result (
-    Date_U,
-    Hours,
-    Location,
-    Value,
-    Binary_Value,
-    Binary_Count,
-    Total_Numbers_In_Binary_Count_Group,
-    Total_Hours
-)
-SELECT  
-    [Date_U],  
-    [Hours],  
-    [Location],  
-    [Value],  
-    [Binary_Value],  
-    [Binary_Count],  
-    [Total_Numbers_In_Binary_Count_Group],  
-    [Total_Hours]  
-FROM #FinalResult;
-
-/*
-select * from Test_DB.dbo.Short_Operation_Result
-ORDER BY [Location], [Date_U], [Hours];
-*/
 -------------------------------
 -- Query:- 
 -------------------------------
+SELECT * FROM Test_DB.dbo.Short_Operation_Result;
 
 SELECT * 
 FROM Test_DB.dbo.Short_Operation_Result
@@ -232,6 +186,39 @@ FROM (
 ) AS RankedResults
 WHERE RowNum <= 3  -- Get top 3 smallest Total_Hours for each Location
 ORDER BY [Location], RowNum;
+
+--------------------------------------------------------------------------------
+-- Transpose query :- 
+---------------------------------------------------------------------------------
+
+WITH RankedResults AS (
+    SELECT 
+        [Location],
+        CASE
+            WHEN Total_Numbers_In_Binary_Count_Group > 0
+            THEN CAST(ROUND((Total_Numbers_In_Binary_Count_Group * 30.0) / 60, 2) AS DECIMAL(10, 2))
+            ELSE 0
+        END AS [Total_Hours],
+        ROW_NUMBER() OVER (PARTITION BY [Location] ORDER BY 
+            CASE
+                WHEN Total_Numbers_In_Binary_Count_Group > 0
+                THEN ROUND((Total_Numbers_In_Binary_Count_Group * 30.0) / 60, 2)
+                ELSE 0
+            END ASC) AS RowNum
+    FROM Test_DB.dbo.Short_Operation_Result
+    WHERE Total_Numbers_In_Binary_Count_Group > 0 -- Filter out records with 0 Total_Numbers_In_Binary_Count_Group
+)
+SELECT 
+    [Location],
+    MAX(CASE WHEN RowNum = 1 THEN Total_Hours END) AS 'Short_Operation-1',
+    MAX(CASE WHEN RowNum = 2 THEN Total_Hours END) AS 'Short_Operation-2',
+    MAX(CASE WHEN RowNum = 3 THEN Total_Hours END) AS 'Short_Operation-3'
+FROM RankedResults
+WHERE RowNum <= 3  -- Get top 3 smallest Total_Hours for each Location
+GROUP BY [Location]
+ORDER BY [Location];
+
+
 
 
 
@@ -318,5 +305,106 @@ SELECT
     [Location],      -- NVARCHAR
     [Value]          -- FLOAT
 FROM #FinalResult;
+
+------------------------------------------------
+
+-- Step 2: Insert data into the new table with the updated column names
+WITH RankedResults AS (
+    SELECT 
+        [Location],
+        CASE
+            WHEN Total_Numbers_In_Binary_Count_Group > 0
+            THEN CAST(ROUND((Total_Numbers_In_Binary_Count_Group * 30.0) / 60, 2) AS DECIMAL(10, 2))
+            ELSE 0
+        END AS [Total_Hours],
+        ROW_NUMBER() OVER (PARTITION BY [Location] ORDER BY 
+            CASE
+                WHEN Total_Numbers_In_Binary_Count_Group > 0
+                THEN ROUND((Total_Numbers_In_Binary_Count_Group * 30.0) / 60, 2)
+                ELSE 0
+            END ASC) AS RowNum
+    FROM Test_DB.dbo.Short_Operation_Result
+    WHERE Total_Numbers_In_Binary_Count_Group > 0
+)
+INSERT INTO Test_DB.dbo.Short_Operation_Final_Transpose ([Location], [Short_Operation-1], [Short_Operation-2], [Short_Operation-3])
+SELECT 
+    [Location],
+    MAX(CASE WHEN RowNum = 1 THEN Total_Hours END) AS [Short_Operation-1],
+    MAX(CASE WHEN RowNum = 2 THEN Total_Hours END) AS [Short_Operation-2],
+    MAX(CASE WHEN RowNum = 3 THEN Total_Hours END) AS [Short_Operation-3]
+FROM RankedResults
+WHERE RowNum <= 3
+GROUP BY [Location]
+ORDER BY [Location];
+
+SELECT * FROM Test_DB.dbo.Short_Operation_Final_Transpose
+
+
+*/
+
+/*
+--------------------------------------------------------------------------------------------------
+-- Creating Table for Short Operation
+--------------------------------------------------------------------------------------------------
+
+CREATE TABLE Test_DB.dbo.Short_Operation_Result (
+    Date_U FLOAT,                         -- Column Date_U as FLOAT (same as #FinalResult)
+    Hours FLOAT,                          -- Column Hours as FLOAT
+    Location NVARCHAR(510),               -- Column Location as NVARCHAR
+    Value FLOAT,                          -- Column Value as FLOAT
+    Binary_Value INT,                     -- Column Binary_Value as INT
+    Binary_Count BIGINT,                  -- Column Binary_Count as BIGINT
+    Total_Numbers_In_Binary_Count_Group BIGINT,  -- Column Total_Numbers_In_Binary_Count_Group as BIGINT
+    Total_Hours DECIMAL(10, 2)            -- Column Total_Hours as DECIMAL with 2 decimal places
+);
+
+
+CREATE TABLE Test_DB.dbo.Short_Operation_Final_Result (
+    Location NVARCHAR(255),  -- Use NVARCHAR for Japanese and other non-Latin characters
+    Total_Hours DECIMAL(10, 2)  -- Decimal for storing hours, with 2 decimal points
+);
+
+CREATE TABLE Test_DB.dbo.Short_Operation_Final_Transpose (
+    [Location] VARCHAR(255),  -- Adjust the size if necessary
+    [Short_Operation-1] DECIMAL(10, 2),
+    [Short_Operation-2] DECIMAL(10, 2),
+    [Short_Operation-3] DECIMAL(10, 2)
+);
+
+
+
+
+--------------------------------------------------------------------------------------------------
+-- Insert data inside Short Operation Table
+--------------------------------------------------------------------------------------------------
+
+INSERT INTO Test_DB.dbo.Short_Operation_Result (
+    Date_U,
+    Hours,
+    Location,
+    Value,
+    Binary_Value,
+    Binary_Count,
+    Total_Numbers_In_Binary_Count_Group,
+    Total_Hours
+)
+SELECT  
+    [Date_U],  
+    [Hours],  
+    [Location],  
+    [Value],  
+    [Binary_Value],  
+    [Binary_Count],  
+    [Total_Numbers_In_Binary_Count_Group],  
+    [Total_Hours]  
+FROM #FinalResult;
+
+
+select * from Test_DB.dbo.Short_Operation_Result
+ORDER BY [Location], [Date_U], [Hours];
+
+--------------------------------------------------------------
+
+
 
 */

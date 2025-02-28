@@ -120,7 +120,7 @@ ORDER BY [Location], [Date_U], [Hours]; -- Sort results by location and time
 
 
 SELECT * FROM Test_DB.dbo.RampUP_Result
-WHERE Binery_Count IN (1, 2, 3)
+WHERE Binery_Count IN (1, 2, 3) AND [Location] LIKE N'%ìåñk_ìdåπäJî≠_êÖóÕ_âúê¥í√ëÊìÒ_ìdî≠_âúê¥í√ëÊìÒ1%'
 ORDER BY [Location], [Date_U], [Hours];
 
 
@@ -207,6 +207,13 @@ CREATE TABLE Test_DB.dbo.RampUP_Result (
     Final_Value_Mega_Watt_Per_Minute FLOAT -- Column Final_Value_Mega_Watt_Per_Minute as FLOAT
 );
 
+----------------------------------------------
+
+CREATE TABLE Test_DB.dbo.RampUP_Final_Result (
+    Location NVARCHAR(255),  -- Assuming the Location is a string, adjust the size if needed
+    Final_Value_Mega_Watt_Per_Minute DECIMAL(10, 2)  -- Assuming Final_Value_Mega_Watt_Per_Minute is a decimal
+);
+
 
 --------------------------------------------------------------------------------------------------
 -- Insert data inside Short Operation Table
@@ -232,6 +239,24 @@ SELECT
     [Selected_Value],  
     [Final_Value_Mega_Watt_Per_Minute]  
 FROM #Ramp_Up_Final;
+
+--------------------------------------------------
+
+-- Ensure previous statement ends with a semicolon
+;WITH RankedResults AS (
+    SELECT 
+        [Location],
+        Final_Value_Mega_Watt_Per_Minute,
+        ROW_NUMBER() OVER (PARTITION BY [Location] ORDER BY Final_Value_Mega_Watt_Per_Minute DESC) AS RowNum
+    FROM Test_DB.dbo.RampUP_Result
+)
+INSERT INTO Test_DB.dbo.RampUP_Final_Result (Location, Final_Value_Mega_Watt_Per_Minute)
+SELECT 
+    [Location], 
+    Final_Value_Mega_Watt_Per_Minute
+FROM RankedResults
+WHERE RowNum = 1  -- Get the top record for each Location
+ORDER BY [Location], Final_Value_Mega_Watt_Per_Minute DESC;
 
 
 

@@ -36,10 +36,25 @@ FROM SelectedValues
 ORDER BY [Location], [Date_U], [Hours];
 
 
-
+/*
 
 ---- EXEC sp_help 'dbo.#Short_Stopage_FinalResult'; --
 
+
+
+
+-------------------------------
+-- Query:- 
+-------------------------------
+
+SELECT count (*) FROM [dbo].[Short_Stopage_Result]
+
+SELECT * 
+FROM [dbo].[Short_Stopage_Result]
+WHERE [Binary_Count] > 0 and  [Location] LIKE N'%“Œ–k_“dŒ¹ŠJ”­_…—Í_‰œ´’Ã‘æ“ñ_“d”­_‰œ´’Ã‘æ“ñ1%' 
+ORDER BY  [Location], [Date_U], [Hours];
+
+*/
 
 
 -------------------------------------------------------------------------
@@ -51,7 +66,7 @@ SELECT name AS COLUMN_NAME,
        TYPE_NAME(user_type_id) AS DATA_TYPE
 FROM tempdb.sys.columns
 WHERE object_id = OBJECT_ID('tempdb..#Short_Stopage_FinalResult');
-*/
+
 
 
 
@@ -74,8 +89,26 @@ CREATE TABLE Test_DB.dbo.Short_Stopage_Result (
     Short_Stopage_Hours FLOAT
 );
 
-
+-------------------------------------------
 SELECT * from Test_DB.dbo.Short_Stopage_Result
+
+-------------------------------------------
+
+CREATE TABLE Test_DB.dbo.Short_Stopage_Final_Result (
+    Location NVARCHAR(255),  -- Adjust the length as necessary for your data
+    Short_Stopage_Hours DECIMAL(10, 2)  -- Adjust precision as necessary for your hours data
+);
+
+-------------------------------------------
+
+CREATE TABLE Test_DB.dbo.Short_Stopage_Final_Transpose (
+    [Location] VARCHAR(255),  -- Adjust the size if necessary
+    [Short_Stopage-1] DECIMAL(10, 2),
+    [Short_Stopage-2] DECIMAL(10, 2),
+    [Short_Stopage-3] DECIMAL(10, 2)
+);
+
+
 
 
 --------------------------------------------------------------------------------------------------
@@ -103,16 +136,51 @@ SELECT
     Short_Stopage_Hours
 FROM #Short_Stopage_FinalResult;
 
--------------------------------
--- Query:- 
--------------------------------
+-----------------------------------------
+WITH RankedResults AS (
+    SELECT
+        [Location],
+        Short_Stopage_Hours,
+        ROW_NUMBER() OVER (PARTITION BY [Location] ORDER BY Short_Stopage_Hours DESC) AS RowNum
+    FROM Test_DB.dbo.Short_Stopage_Result
+    WHERE Short_Stopage_Hours > 0  -- Only consider records where Short_Stopage_Hours > 0
+)
+INSERT INTO Test_DB.dbo.Short_Stopage_Final_Transpose ([Location], [Short_Stopage-1], [Short_Stopage-2], [Short_Stopage-3])
+SELECT 
+    [Location],
+    MAX(CASE WHEN RowNum = 1 THEN Short_Stopage_Hours END) AS 'Short_Stopage-1',
+    MAX(CASE WHEN RowNum = 2 THEN Short_Stopage_Hours END) AS 'Short_Stopage-2',
+    MAX(CASE WHEN RowNum = 3 THEN Short_Stopage_Hours END) AS 'Short_Stopage-3'
+FROM RankedResults
+WHERE RowNum <= 3  -- Select top 3 records for each Location
+GROUP BY [Location]
+ORDER BY [Location];
 
-SELECT count (*) FROM [dbo].[Short_Stopage_Result]
 
-SELECT * 
-FROM [dbo].[Short_Stopage_Result]
-WHERE [Binary_Count] > 0
-ORDER BY  [Location], [Date_U], [Hours] ;
+
+----------------------------------------------------------
+
+-- Ensure previous statement ends with a semicolon
+;WITH RankedResults AS (
+    SELECT
+        [Location],
+        Short_Stopage_Hours,
+        ROW_NUMBER() OVER (PARTITION BY [Location] ORDER BY Short_Stopage_Hours) AS RowNum
+    FROM Test_DB.dbo.Short_Stopage_Result
+    WHERE Short_Stopage_Hours > 0  -- Only consider records where Short_Stopage_Hours > 0
+)
+INSERT INTO Test_DB.dbo.Short_Stopage_Final_Result (Location, Short_Stopage_Hours)
+SELECT 
+    [Location], 
+    Short_Stopage_Hours
+FROM RankedResults
+WHERE RowNum <= 3  -- Select top 3 records for each Location
+ORDER BY [Location], Short_Stopage_Hours DESC;
+
+
+Select * from [dbo].[Short_Stopage_Final_Result]
+
+
 
 
 --------------------------------------------------------------------------------------------------
@@ -149,7 +217,7 @@ ORDER BY [Location], Short_Stopage_Hours DESC;
 
 
 ------------------------------------------------------------------------------
-Only two Columns are display [Location] Short_Stopage_Hours
+-- Only two Columns are display [Location] Short_Stopage_Hours
 ------------------------------------------------------------------------------
 
 WITH RankedResults AS (
@@ -168,5 +236,25 @@ WHERE RowNum <= 3  -- Select top 3 records for each Location
 ORDER BY [Location], Short_Stopage_Hours DESC;
 
 
+------------------------------------------------------------------------------
+-- Transpose . 
+------------------------------------------------------------------------------
+WITH RankedResults AS (
+    SELECT
+        [Location],
+        Short_Stopage_Hours,
+        ROW_NUMBER() OVER (PARTITION BY [Location] ORDER BY Short_Stopage_Hours DESC) AS RowNum
+    FROM Test_DB.dbo.Short_Stopage_Result
+    WHERE Short_Stopage_Hours > 0  -- Only consider records where Short_Stopage_Hours > 0
+)
+SELECT 
+    [Location],
+    MAX(CASE WHEN RowNum = 1 THEN Short_Stopage_Hours END) AS 'Short_Stopage-1',
+    MAX(CASE WHEN RowNum = 2 THEN Short_Stopage_Hours END) AS 'Short_Stopage-2',
+    MAX(CASE WHEN RowNum = 3 THEN Short_Stopage_Hours END) AS 'Short_Stopage-3'
+FROM RankedResults
+WHERE RowNum <= 3  -- Select top 3 records for each Location
+GROUP BY [Location]
+ORDER BY [Location];
 
-
+*/

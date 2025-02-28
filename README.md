@@ -15,5 +15,6 @@ Max Ramp Down Rate
 If you have time, I would like to have a quick call to explain what exactly you could do.
 
 
+MWh / Minute
 
 
